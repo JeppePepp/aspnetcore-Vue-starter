@@ -1,15 +1,23 @@
 const path = require('path')
 const webpack = require('webpack')
-const ExtractTextPlugin = require('extract-text-webpack-plugin')
-const OptimizeCSSPlugin = require('optimize-css-assets-webpack-plugin')
+//const ExtractTextPlugin = require('extract-text-webpack-plugin')
+//const OptimizeCSSPlugin = require('optimize-css-assets-webpack-plugin')
+
+const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const CleanWebpackPlugin = require('clean-webpack-plugin');
 
 module.exports = () => {
   console.log('Building vendor files for \x1b[33m%s\x1b[0m', process.env.NODE_ENV)
 
   const isDevBuild = !(process.env.NODE_ENV && process.env.NODE_ENV === 'production')
-  const extractCSS = new ExtractTextPlugin('vendor.css')
+  //const extractCSS = new ExtractTextPlugin('vendor.css')
+
+  console.log("******************************************Build of webpack.config.vendor.js in progress ***************************************");
+  console.log("current Mode :" + isDevBuild);
 
   return [{
+    mode: isDevBuild ? 'development' : 'production',
     stats: { modules: false },
     resolve: {
       extensions: ['.js']
@@ -17,7 +25,7 @@ module.exports = () => {
     module: {
       rules: [
         { test: /\.(png|woff|woff2|eot|ttf|svg)(\?|$)/, use: 'url-loader?limit=100000' },
-        { test: /\.css(\?|$)/, use: extractCSS.extract(['css-loader']) }
+        { test: /\.css(\?|$)/, use: isDevBuild ? [MiniCssExtractPlugin.loader, 'css-loader'] : [MiniCssExtractPlugin.loader, 'css-loader?css-loader?minimize'] },
       ]
     },
     entry: {
@@ -30,13 +38,8 @@ module.exports = () => {
       library: '[name]_[hash]'
     },
     plugins: [
-      extractCSS,
-      // Compress extracted CSS.
-      new OptimizeCSSPlugin({
-        cssProcessorOptions: {
-          safe: true
-        }
-      }),
+      new CleanWebpackPlugin(path.join(__dirname, 'wwwroot', 'dist'), {}),
+      new MiniCssExtractPlugin({ filename: 'vendor.css' }),
       new webpack.ProvidePlugin({
         $: 'jquery',
         jQuery: 'jquery',
@@ -50,8 +53,9 @@ module.exports = () => {
       new webpack.DefinePlugin({
         'process.env.NODE_ENV': isDevBuild ? '"development"' : '"production"'
       })
-    ].concat(isDevBuild ? [] : [
-      new webpack.optimize.UglifyJsPlugin()
-    ])
+    ],
+    optimization: {
+      minimizer: (isDevBuild ? [] : [new UglifyJsPlugin()])
+    },
   }]
 }
